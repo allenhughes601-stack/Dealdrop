@@ -9,7 +9,20 @@ export async function GET() {
         const { error } = await supabase.from('products').select('id').limit(1);
         
         if (error) throw error;
-        return NextResponse.json({ status: 'healthy', database: 'connected' }, { status: 200 });
+
+         const { data: lastRun } = await supabase
+          .from('feed_runs')
+          .select('completed_at, status')
+          .order('completed_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        const hoursSinceLastRun = lastRun?.completed_at
+          ? (Date.now() - new Date(lastRun.completed_at).
+  getTime()) / 1000 / 60 / 60
+          : 999;
+
+        return NextResponse.json({ status: 'healthy', database: 'connected' , last_feed_run: lastRun?.completed_at ?? 'never',feed_status: lastRun?.status ?? 'unknown',feed_overdue: hoursSinceLastRun > 2,}, { status: 200 });
     } catch (error: any) {
         return NextResponse.json({ status: 'unhealthy', error: error.message }, { status: 503 });
     }
